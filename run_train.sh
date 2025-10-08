@@ -1,0 +1,14 @@
+accelerate launch --multi_gpu sft.py \
+    --model_path /mnt/model/pretrained/Qwen3-1.7B-Base \
+    --train_data_path data/train.json \
+    --eval_data_path data/test.json \
+    --output_dir saves \
+    --learning_rate 1e-5 \
+    --train_batch_size 2 \
+    --gradient_accumulation_steps 2 \
+    --eval_batch_size 2 \
+    --num_train_epochs 3 \
+    --bf16 \
+    --compute_metrics fct.compute_metrics_exact_match \
+    --grid_search fct.grid_search_plan_a \
+    --apply_gen_token '<GEN:gingasan>'
