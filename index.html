@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Happy Chat</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      width: 600px;
+      height: 80vh;
+      background-color: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    .chat-history {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .message {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      word-wrap: break-word;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      overflow: auto;
+      max-height: 12em;
+    }
+    .user-message {
+      align-self: flex-end;
+      background-color: #ffe4e8;
+    }
+    .bot-message {
+      align-self: flex-start;
+      background-color: #b7e7f7;
+    }
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #dddddd;
+      padding: 10px;
+      background-color: #f9f9f9;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+    }
+    .chat-input button {
+      margin-left: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .chat-input button:hover {
+      background-color: #00b380;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="chat-container">
+    <div id="chat-history" class="chat-history">
+    </div>
+    <div class="chat-input">
+      <input id="user-input" type="text" placeholder="Input..." onkeydown="handleKeyPress(event)">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatHistory = document.getElementById("chat-history");
+    const userInput = document.getElementById("user-input");
+
+    let messages = [];
+
+    function appendMessage(message, sender) {
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("message", sender === "user" ? "user-message" : "bot-message");
+      msgDiv.textContent = message;
+      chatHistory.appendChild(msgDiv);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+      appendMessage(message, "user");
+      messages.push({ role: "user", content: message });
+      userInput.value = "";
+
+      appendMessage("Model is processing...", "bot");
+      const response = await sendMessageToServer(messages);
+      const replyDiv = chatHistory.lastChild;
+      replyDiv.textContent = response;
+      messages.push({ role: "assistant", content: response });
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    }
+
+    async function sendMessageToServer(dialog) {
+      const resp = await fetch("http://localhost:5000/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ messages: dialog })
+      });
+      const j = await resp.json();
+      if (j.reply !== undefined) {
+        return j.reply;
+      } else {
+        return "no reaction";
+      }
+    }
+
+    async function loadInitMessages() {
+    try {
+      const resp = await fetch("http://localhost:5000/init");
+      const data = await resp.json();
+      if (data.messages) {
+        for (const msg of data.messages) {
+          appendMessage(msg.content, msg.role === "user" ? "user" : "bot");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load initial messages:", err);
+    }
+  }
+  window.onload = loadInitMessages;
+
+  </script>
+
+</body>
+</html>
